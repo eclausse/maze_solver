@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::{HashSet, VecDeque}, fmt::Display};
 
 #[derive(Eq, Hash, PartialEq, Clone)]
 enum Direction {
@@ -21,47 +21,44 @@ impl Node {
 
 struct Maze {
     cell: Vec<Vec<Node>>,
+    width: usize,
+    height: usize,
 }
 
 impl Maze {
     pub fn new(width: usize, height: usize) -> Self {
-        Maze { cell: vec![vec![Node::new(); width]; height] }
+        if width < 1 || height < 1 {
+            panic!("Invalid argument");
+        }
+        Maze { cell: vec![vec![Node::new(); width]; height], width, height }
     }
 
-    pub fn print(&self) {
+    
+}
+
+impl Display for Maze {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> { 
         for row in self.cell.iter() {
             for column in row.iter() {
-                print!("+{}", if column.access.contains(&Direction::NORTH) {"   "} else {"---"});
+                write!(f, "+{}", if column.access.contains(&Direction::NORTH) {"   "} else {"---"})?;
             }
-            print!("+");
-            println!();
+            write!(f, "+\n")?;
             for column in row.iter() {
-                print!("{}   ", if column.access.contains(&Direction::WEST) {" "} else {"|"});
+                write!(f, "{0}{1}", if column.access.contains(&Direction::WEST) {" "} else {"|"},
+                                 if column.start || column.end {" o "} else if column.visited {" . "} else {"   "})?;
             }
-            print!("|");
-            println!();
-            for column in row.iter() {
-                print!("{0}{1}", if column.access.contains(&Direction::WEST) {" "} else {"|"},
-                                 if column.visited {" . "} else {"   "});
-            }
-            print!("|");
-            println!();
-            for column in row.iter() {
-                print!("{}   ", if column.access.contains(&Direction::WEST) {" "} else {"|"});
-            }
-            print!("|");
-            println!();
+            write!(f, "|\n")?;
         }
 
         for _ in self.cell[0].iter() {
-            print!("+---");
+            write!(f, "+---")?;
         }
-        print!("+");
-        println!();
+        write!(f, "+\n")
     }
 }
 
 fn main() {
-    let maze: Maze = Maze::new(5, 5);
-    maze.print();
+    let mut maze: Maze = Maze::new(5, 5);
+    maze.make();
+    println!("{maze}");
 }
