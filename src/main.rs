@@ -1,14 +1,23 @@
-use std::{collections::{HashSet, VecDeque}, fmt::Display};
-use rand::{Rng, seq::SliceRandom};
+mod tree;
+use crate::tree::*;
+
+use rand::{seq::SliceRandom, Rng};
+use std::{
+    collections::{HashSet, VecDeque},
+    fmt::Display,
+};
 
 #[derive(Eq, Hash, PartialEq, Clone, Debug)]
-enum Direction {
-    SOUTH, NORTH, WEST, EAST
+pub enum Direction {
+    SOUTH,
+    NORTH,
+    WEST,
+    EAST,
 }
 
 #[derive(Clone)]
-struct Node {
-    access: HashSet<Direction>,
+pub struct Node {
+    pub access: HashSet<Direction>,
     visited: bool,
     start: bool,
     end: bool,
@@ -16,20 +25,25 @@ struct Node {
 
 impl Node {
     pub fn new() -> Self {
-        Node { access: HashSet::new(), visited: false, start: false, end: false }
+        Node {
+            access: HashSet::new(),
+            visited: false,
+            start: false,
+            end: false,
+        }
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-struct Position {
-    x: usize,
-    y: usize,
+pub struct Position {
+    pub x: usize,
+    pub y: usize,
 }
 
 impl Position {
     // Direction of dst relative to src
     pub fn get_direction(&self, dst: &Position) -> Option<Direction> {
-        if self.x < dst.x{
+        if self.x < dst.x {
             return Some(Direction::EAST);
         }
 
@@ -44,12 +58,11 @@ impl Position {
         if self.y > dst.y {
             return Some(Direction::NORTH);
         }
-
         None
     }
 }
 
-struct Maze {
+pub struct Maze {
     cell: Vec<Vec<Node>>,
     width: usize,
     height: usize,
@@ -60,40 +73,83 @@ impl Maze {
         if width < 1 || height < 1 {
             panic!("Invalid argument");
         }
-        Maze { cell: vec![vec![Node::new(); width]; height], width, height }
+        Maze {
+            cell: vec![vec![Node::new(); width]; height],
+            width,
+            height,
+        }
     }
 
-    fn unvisited_neighbor(&self, x: usize, y: usize) -> Vec<Position> {
+    // TODO: Refactor into functionnal
+    fn find(&self, predicate: fn(&Node) -> bool) -> Option<Position> {
+        for row in self.cell.iter().enumerate() {
+            for column in row.1.iter().enumerate() {
+                if predicate(column.1) {
+                    return Some(Position {
+                        x: column.0,
+                        y: row.0,
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    pub fn find_start(&self) -> Option<Position> {
+        self.find(|e: &Node| e.start == true)
+    }
+
+    pub fn find_end(&self) -> Option<Position> {
+        self.find(|e: &Node| e.end == true)
+    }
+
+    fn unvisited_neighbor(&self, position: Position) -> Vec<Position> {
         let mut buffer = Vec::new();
 
-        if x > 0 {
-            if !self.cell[y][x-1].visited {
-                buffer.push(Position { x: x-1, y});
+        if position.x > 0 {
+            if !self.cell[position.y][position.x - 1].visited {
+                buffer.push(Position {
+                    x: position.x - 1,
+                    y: position.y,
+                });
             }
         }
-        if x < self.width - 1 {
-            if !self.cell[y][x+1].visited {
-                buffer.push(Position { x: x+1, y});
+        if position.x < self.width - 1 {
+            if !self.cell[position.y][position.x + 1].visited {
+                buffer.push(Position {
+                    x: position.x + 1,
+                    y: position.y,
+                });
             }
         }
-        if y > 0 {
-            if !self.cell[y-1][x].visited {
-                buffer.push(Position { x, y: y-1});
+        if position.y > 0 {
+            if !self.cell[position.y - 1][position.x].visited {
+                buffer.push(Position {
+                    x: position.x,
+                    y: position.y - 1,
+                });
             }
         }
-        if y < self.height - 1 {
-            if !self.cell[y+1][x].visited {
-                buffer.push(Position { x, y: y+1});
+        if position.y < self.height - 1 {
+            if !self.cell[position.y + 1][position.x].visited {
+                buffer.push(Position {
+                    x: position.x,
+                    y: position.y + 1,
+                });
             }
         }
 
         buffer
     }
 
+    pub fn is_dead_end(&self, position: Position) -> bool {
+        todo!()
+    }
+
     pub fn make(&mut self) {
         let mut previous_position = Position {
             x: rand::thread_rng().gen_range(0..self.width),
-            y: rand::thread_rng().gen_range(0..self.height)
+            y: rand::thread_rng().gen_range(0..self.height),
         };
         let mut stack: VecDeque<Position> = VecDeque::new();
         stack.push_front(previous_position);
@@ -104,13 +160,17 @@ impl Maze {
 
         while !stack.is_empty() {
             previous_position = *stack.front().unwrap();
-            let buffer = self.unvisited_neighbor(previous_position.x, previous_position.y);
+            let buffer = self.unvisited_neighbor(previous_position);
 
             match buffer.choose(&mut rand::thread_rng()) {
                 Some(&next_position) => {
                     // Break walls
-                    self.cell[previous_position.y][previous_position.x].access.insert(previous_position.get_direction(&next_position).unwrap());
-                    self.cell[next_position.y][next_position.x].access.insert(next_position.get_direction(&previous_position).unwrap());
+                    self.cell[previous_position.y][previous_position.x]
+                        .access
+                        .insert(previous_position.get_direction(&next_position).unwrap());
+                    self.cell[next_position.y][next_position.x]
+                        .access
+                        .insert(next_position.get_direction(&previous_position).unwrap());
 
                     // Mark node as visited
                     self.cell[next_position.y][next_position.x].visited = true;
@@ -133,18 +193,58 @@ impl Maze {
             ite.iter_mut().for_each(|ele| ele.visited = false);
         }
     }
+
+    pub fn get_distance(&self, position: Position) -> usize {
+        let end = self.find_end().unwrap();
+        end.x.abs_diff(position.x) + end.y.abs_diff(position.y)
+    }
+
+    pub fn get_node_from_position(&self, position: Position) -> Option<Node> {
+        if position.x < self.width && position.y < self.height {
+            return Some(self.cell[position.y][position.x].clone());
+        }
+        None
+    }
+
+    pub fn mark_position_visited(&mut self, position: Position) {
+        if position.x < self.width && position.y < self.height {
+            self.cell[position.y][position.x].visited = true;
+        }
+    }
 }
 
 impl Display for Maze {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> { 
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         for row in self.cell.iter() {
             for column in row.iter() {
-                write!(f, "+{}", if column.access.contains(&Direction::NORTH) {"   "} else {"---"})?;
+                write!(
+                    f,
+                    "+{}",
+                    if column.access.contains(&Direction::NORTH) {
+                        "   "
+                    } else {
+                        "---"
+                    }
+                )?;
             }
             write!(f, "+\n")?;
             for column in row.iter() {
-                write!(f, "{0}{1}", if column.access.contains(&Direction::WEST) {" "} else {"|"},
-                                 if column.start || column.end {" o "} else if column.visited {" . "} else {"   "})?;
+                write!(
+                    f,
+                    "{0}{1}",
+                    if column.access.contains(&Direction::WEST) {
+                        " "
+                    } else {
+                        "|"
+                    },
+                    if column.start || column.end {
+                        " o "
+                    } else if column.visited {
+                        " . "
+                    } else {
+                        "   "
+                    }
+                )?;
             }
             write!(f, "|\n")?;
         }
@@ -160,5 +260,11 @@ fn main() {
     let mut maze: Maze = Maze::new(10, 10);
     maze.make();
     println!("{maze}");
-    // println!("{:#?}", maze.cell[4][4].access);
+
+    let mut tree = Tree::new();
+
+    let mut node = TreeNode::new(maze.find_start().unwrap());
+    node.calculate_heuristic(&maze);
+    tree.insert(&mut node);
+    println!("{}", tree);
 }
