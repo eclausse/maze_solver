@@ -57,21 +57,19 @@ impl TreeNode {
 
     fn best_valid_position_recursion(
         node: &Rc<RefCell<TreeNode>>,
-    ) -> (usize, Rc<RefCell<TreeNode>>) {
-        let mut best_f = node.as_ref().borrow().f;
-        let mut best_position = node.clone();
+    ) -> (usize, Option<Rc<RefCell<TreeNode>>>) {
+        let current = node.as_ref().borrow();
+        let mut best_f = usize::MAX;
+        let mut best_position = None;
 
-        for child in node
-            .as_ref()
-            .borrow()
-            .childs
-            .iter()
-            .filter(|&e| e.as_ref().borrow().dead_end == false)
-        {
+        if !current.dead_end {
+            best_f = current.f;
+            best_position = Some(node.clone());
+        }
+
+        for child in node.as_ref().borrow().childs.iter() {
             let res = TreeNode::best_valid_position_recursion(child);
-            println!("Values: res = {}, best_f = {best_f}", res.0);
             if res.0 < best_f {
-                println!("Find lower");
                 best_f = res.0;
                 best_position = res.1.clone();
             }
@@ -79,23 +77,48 @@ impl TreeNode {
         (best_f, best_position)
     }
 
-    pub fn find_best_valid_position(node: &Rc<RefCell<TreeNode>>) -> Rc<RefCell<TreeNode>> {
+    pub fn find_best_valid_position(node: &Rc<RefCell<TreeNode>>) -> Option<Rc<RefCell<TreeNode>>> {
         TreeNode::best_valid_position_recursion(node).1
     }
 
     pub fn get_best_next_position(node: &Rc<RefCell<TreeNode>>, maze: &Maze) -> Option<Position> {
-        let current = node.as_ref().borrow().position;
-        let current_access = maze.get_node_from_position(current).unwrap().access;
-        let unvisited = maze.unvisited_neighbor(current);
-        unvisited
-            .iter()
-            .filter(|&e| {
-                let d = current.get_direction(e).unwrap();
-                current_access.contains(&d)
-            })
+        let mut current = node.as_ref().borrow_mut();
+        if current.dead_end {
+            return None;
+        }
+
+        let current_access = maze
+            .get_node_from_position(current.position)
+            .unwrap()
+            .access;
+        let unvisited = maze.unvisited_neighbor(current.position);
+        let c = current.to_owned();
+        let unvisited_possibilities = unvisited.iter().filter(|&e| {
+            let d = c.position.get_direction(e).unwrap();
+            current_access.contains(&d)
+                && !c.childs.iter().any(|f| f.as_ref().borrow().position == *e)
+                && check_parent_position(&c, e)
+        });
+
+        if unvisited_possibilities.clone().count() < 2 {
+            current.dead_end = true;
+        }
+
+        unvisited_possibilities
             .min_by_key(|&e| maze.get_distance(*e))
             .copied()
     }
+}
+
+fn check_parent_position(current: &TreeNode, position: &Position) -> bool {
+    let parent = &current.parent;
+    let mut check_parent = true;
+    if let Some(p) = parent {
+        if let Some(p) = p.upgrade() {
+            check_parent = p.as_ref().borrow().position != *position;
+        }
+    }
+    check_parent
 }
 
 impl Display for TreeNode {
@@ -138,7 +161,7 @@ impl Tree {
 
     pub fn find_best_valid_position(&self) -> Option<Rc<RefCell<TreeNode>>> {
         match &self.root {
-            Some(root) => Some(TreeNode::find_best_valid_position(root)),
+            Some(root) => TreeNode::find_best_valid_position(root),
             None => None,
         }
     }
@@ -169,25 +192,27 @@ mod tests {
         maze.make();
         println!("{maze}");
 
-        let mut node = TreeNode::new(Position { x: 1, y: 1 });
+        let mut node = TreeNode::new(maze.find_start().unwrap());
         node.calculate_heuristic(&maze);
-        let mut node2 = TreeNode::new(Position { x: 2, y: 2 });
-        node2.calculate_heuristic(&maze);
-        let mut node3 = TreeNode::new(Position { x: 3, y: 2 });
-        node3.calculate_heuristic(&maze);
 
         let mut tree = Tree::new();
         tree.insert(&mut node);
-        tree.insert(&mut node2);
-        tree.insert(&mut node3);
 
-        //println!("{}", tree);
+        for _ in 0..20 {
+            let mut find = tree.find_best_valid_position().unwrap();
+            println!("Find node; {:#?}", find);
 
-        let find = tree.find_best_valid_position().unwrap();
-        println!("Find node; {:#?}", find);
-
-        let best_pos = TreeNode::get_best_next_position(&find, &maze).unwrap();
-        maze.mark_position_visited(best_pos);
+            if let Some(best_pos) = TreeNode::get_best_next_position(&find, &maze) {
+                if maze.find_end().unwrap() == best_pos {
+                    println!("FINISHED");
+                    break;
+                }
+                maze.mark_position_visited(best_pos);
+                let mut n = TreeNode::new(best_pos);
+                n.calculate_heuristic(&maze);
+                TreeNode::insert_node(&mut find, &mut n);
+            }
+        }
 
         println!("{maze}");
     }
