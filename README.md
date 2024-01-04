@@ -21,8 +21,7 @@ It will than solve the maze using A* Algorithm with the Manhattan heuristic.
 $ cargo run -- [width height]
 ```
 
-> Note: default value width and height is 10
-> Note: Width and Height must be minimun 3
+> Note: default value width and height is 10; Width and Height must be minimun 3
 
 ## Demonstration
 
