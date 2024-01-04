@@ -15,6 +15,15 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 The program can generate a maze using a randomized Depth First Search (DFS), generate a random start and end node.
 It will than solve the maze using A* Algorithm with the Manhattan heuristic.
 
+## Usage
+
+```
+$ cargo run -- [width height]
+```
+
+> Note: default value width and height is 10
+> Note: Width and Height must be minimun 3
+
 ## Demonstration
 
 ```
@@ -51,15 +60,15 @@ It will than solve the maze using A* Algorithm with the Manhattan heuristic.
 +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ```
 
-## Contributing
+# Contributing
 
 Pull requests are welcome. This project was made to learn rust so any improvement you can think about is welcome.
 For major changes, please open an issue first to discuss what you would like to change.
 
-## Author
+# Author
 
 Evan Clausse
 
-## License
+# License
 
 [MIT](https://choosealicense.com/licenses/mit/)

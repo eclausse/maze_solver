@@ -2,6 +2,7 @@ mod tree;
 use crate::tree::*;
 
 use rand::{seq::SliceRandom, Rng};
+use std::env;
 use std::{
     collections::{HashSet, VecDeque},
     fmt::Display,
@@ -142,10 +143,6 @@ impl Maze {
         buffer
     }
 
-    pub fn is_dead_end(&self, position: Position) -> bool {
-        todo!()
-    }
-
     pub fn make(&mut self) {
         let mut previous_position = Position {
             x: rand::thread_rng().gen_range(0..self.width),
@@ -279,8 +276,30 @@ impl Display for Maze {
 }
 
 fn main() {
-    let mut maze: Maze = Maze::new(15, 15);
+    let (width, height) = parse_arguments();
+
+    let mut maze: Maze = Maze::new(width, height);
     maze.make();
     maze.solve();
     println!("{maze}");
+}
+
+fn parse_arguments() -> (usize, usize) {
+    let args: Vec<String> = env::args().collect();
+    (parse(args.get(1)), parse(args.get(2)))
+}
+
+fn parse(arg: Option<&String>) -> usize {
+    match arg {
+        None => return 10,
+        Some(h) => {
+            let res = h.parse::<usize>().expect(
+                "Argument can only be positive number superior to 3 \n Usage: cargo run -- [width height]",
+            );
+            if res < 3 {
+                panic!("Argument can only be positive number superior to 3 \n Usage: cargo run -- [width height]");
+            }
+            res
+        }
+    }
 }

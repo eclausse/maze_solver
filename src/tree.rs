@@ -127,7 +127,6 @@ impl TreeNode {
                 p.as_ref().borrow().trace_path(maze);
             }
         }
-        println!("mark:  {:#?}", self.position);
         maze.mark_position_visited(self.position);
     }
 }
@@ -195,7 +194,6 @@ impl Display for Tree {
 mod tests {
     use super::{Tree, TreeNode};
     use crate::Maze;
-    use crate::Position;
 
     #[test]
     fn it_works() {
