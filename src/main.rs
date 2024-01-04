@@ -194,6 +194,28 @@ impl Maze {
         }
     }
 
+    pub fn solve(&mut self) {
+        let mut start_node = TreeNode::new(self.find_start().unwrap());
+        start_node.calculate_heuristic(self);
+
+        let mut tree = Tree::new();
+        tree.insert(&mut start_node);
+
+        loop {
+            let mut found_node = tree.find_best_valid_position().unwrap();
+
+            if let Some(best_pos) = TreeNode::get_best_next_position(&found_node, self) {
+                if self.find_end().unwrap() == best_pos {
+                    found_node.as_ref().borrow().trace_path(self);
+                    break;
+                }
+                let mut new_node = TreeNode::new(best_pos);
+                new_node.calculate_heuristic(self);
+                TreeNode::insert_node(&mut found_node, &mut new_node);
+            }
+        }
+    }
+
     pub fn get_distance(&self, position: Position) -> usize {
         let end = self.find_end().unwrap();
         end.x.abs_diff(position.x) + end.y.abs_diff(position.y)
@@ -259,26 +281,6 @@ impl Display for Maze {
 fn main() {
     let mut maze: Maze = Maze::new(15, 15);
     maze.make();
-
-    let mut node = TreeNode::new(maze.find_start().unwrap());
-    node.calculate_heuristic(&maze);
-
-    let mut tree = Tree::new();
-    tree.insert(&mut node);
-
-    loop {
-        let mut find = tree.find_best_valid_position().unwrap();
-
-        if let Some(best_pos) = TreeNode::get_best_next_position(&find, &maze) {
-            if maze.find_end().unwrap() == best_pos {
-                find.as_ref().borrow().trace_path(&mut maze);
-                break;
-            }
-            let mut n = TreeNode::new(best_pos);
-            n.calculate_heuristic(&maze);
-            TreeNode::insert_node(&mut find, &mut n);
-        }
-    }
-
+    maze.solve();
     println!("{maze}");
 }
