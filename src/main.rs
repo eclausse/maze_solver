@@ -257,14 +257,28 @@ impl Display for Maze {
 }
 
 fn main() {
-    let mut maze: Maze = Maze::new(10, 10);
+    let mut maze: Maze = Maze::new(15, 15);
     maze.make();
-    println!("{maze}");
-
-    let mut tree = Tree::new();
 
     let mut node = TreeNode::new(maze.find_start().unwrap());
     node.calculate_heuristic(&maze);
+
+    let mut tree = Tree::new();
     tree.insert(&mut node);
-    println!("{}", tree);
+
+    loop {
+        let mut find = tree.find_best_valid_position().unwrap();
+
+        if let Some(best_pos) = TreeNode::get_best_next_position(&find, &maze) {
+            if maze.find_end().unwrap() == best_pos {
+                find.as_ref().borrow().trace_path(&mut maze);
+                break;
+            }
+            let mut n = TreeNode::new(best_pos);
+            n.calculate_heuristic(&maze);
+            TreeNode::insert_node(&mut find, &mut n);
+        }
+    }
+
+    println!("{maze}");
 }

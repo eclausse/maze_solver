@@ -97,7 +97,7 @@ impl TreeNode {
             let d = c.position.get_direction(e).unwrap();
             current_access.contains(&d)
                 && !c.childs.iter().any(|f| f.as_ref().borrow().position == *e)
-                && check_parent_position(&c, e)
+                && c.check_parent_position(e)
         });
 
         if unvisited_possibilities.clone().count() < 2 {
@@ -108,17 +108,28 @@ impl TreeNode {
             .min_by_key(|&e| maze.get_distance(*e))
             .copied()
     }
-}
 
-fn check_parent_position(current: &TreeNode, position: &Position) -> bool {
-    let parent = &current.parent;
-    let mut check_parent = true;
-    if let Some(p) = parent {
-        if let Some(p) = p.upgrade() {
-            check_parent = p.as_ref().borrow().position != *position;
+    fn check_parent_position(&self, position: &Position) -> bool {
+        let parent = &self.parent;
+        let mut check_parent = true;
+        if let Some(p) = parent {
+            if let Some(p) = p.upgrade() {
+                check_parent = p.as_ref().borrow().position != *position;
+            }
         }
+        check_parent
     }
-    check_parent
+
+    pub fn trace_path(&self, maze: &mut Maze) {
+        let parent = &self.parent;
+        if let Some(p) = parent {
+            if let Some(p) = p.upgrade() {
+                p.as_ref().borrow().trace_path(maze);
+            }
+        }
+        println!("mark:  {:#?}", self.position);
+        maze.mark_position_visited(self.position);
+    }
 }
 
 impl Display for TreeNode {
