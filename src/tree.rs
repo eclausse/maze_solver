@@ -6,15 +6,15 @@ use std::{
     rc::{Rc, Weak},
 };
 
-type NodePtr = Rc<RefCell<TreeNode>>;
+type TreeNodePtr = Rc<RefCell<TreeNode>>;
 
 #[derive(Debug, Clone)]
 pub struct TreeNode {
-    pub parent: Option<Weak<RefCell<TreeNode>>>,
-    pub childs: Vec<NodePtr>,
-    pub position: Position,
-    pub dead_end: bool,
-    pub f: usize,
+    parent: Option<Weak<RefCell<TreeNode>>>,
+    childs: Vec<TreeNodePtr>,
+    position: Position,
+    dead_end: bool,
+    f: usize,
     g: usize,
     h: usize,
 }
@@ -40,7 +40,7 @@ impl TreeNode {
     }
 
     // Insert a node and update g and f
-    pub fn insert_node(node: &mut NodePtr, to_insert: &mut TreeNode) {
+    pub fn insert_node(node: &mut TreeNodePtr, to_insert: &mut TreeNode) {
         // Update parent node
         to_insert.parent = Some(Rc::downgrade(&node));
 
@@ -90,35 +90,41 @@ impl TreeNode {
             .get_node_from_position(current.position)
             .unwrap()
             .access;
+
+        // Get all unvisited positions
         let unvisited = maze.unvisited_neighbor(current.position);
+
+        // Filter already visited positions (parent and childs of the node)
         let c = current.to_owned();
         let unvisited_possibilities = unvisited.iter().filter(|&e| {
             let d = c.position.get_direction(e).unwrap();
             current_access.contains(&d)
                 && !c.childs.iter().any(|f| f.as_ref().borrow().position == *e)
-                && c.check_parent_position(e)
+                && !c.is_parent_position(e)
         });
 
         if unvisited_possibilities.clone().count() < 2 {
             current.dead_end = true;
         }
 
+        // Get the best valid next position (the one with min(h) => min(f) # Because g the same for every child of this node)
         unvisited_possibilities
             .min_by_key(|&e| maze.get_distance(*e))
             .copied()
     }
 
-    fn check_parent_position(&self, position: &Position) -> bool {
+    fn is_parent_position(&self, position: &Position) -> bool {
         let parent = &self.parent;
-        let mut check_parent = true;
+        let mut check_parent = false;
         if let Some(p) = parent {
             if let Some(p) = p.upgrade() {
-                check_parent = p.as_ref().borrow().position != *position;
+                check_parent = p.as_ref().borrow().position == *position;
             }
         }
         check_parent
     }
 
+    // Mark visited all the node from self to the root of the tree
     pub fn trace_path(&self, maze: &mut Maze) {
         let parent = &self.parent;
         if let Some(p) = parent {
@@ -146,14 +152,8 @@ impl Display for TreeNode {
     }
 }
 
-impl From<TreeNode> for Option<NodePtr> {
-    fn from(node: TreeNode) -> Self {
-        Some(Rc::new(RefCell::new(node)))
-    }
-}
-
 pub struct Tree {
-    pub root: Option<NodePtr>,
+    pub root: Option<TreeNodePtr>,
 }
 
 impl Tree {

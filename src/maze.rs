@@ -141,7 +141,9 @@ impl Maze {
         buffer
     }
 
+    // Generate a maze using Random DFS
     pub fn make(&mut self) {
+        // Generate a random first position
         let mut previous_position = Position {
             x: rand::thread_rng().gen_range(0..self.width),
             y: rand::thread_rng().gen_range(0..self.height),
@@ -184,6 +186,7 @@ impl Maze {
             }
         }
 
+        // Mark unvisited all nodes
         for ite in self.cell.iter_mut() {
             ite.iter_mut().for_each(|ele| ele.visited = false);
         }
