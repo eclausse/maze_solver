@@ -1,6 +1,5 @@
-use crate::Maze;
+use crate::maze::*;
 
-use super::Position;
 use std::fmt::Display;
 use std::{
     cell::RefCell,
